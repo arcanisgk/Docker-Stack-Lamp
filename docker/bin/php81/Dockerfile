@@ -1,0 +1,25 @@
+FROM php:8.1-apache-bullseye
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update &&  \
+    apt-get upgrade -y --no-install-recommends --fix-missing
+
+RUN apt-get install -y --no-install-recommends --fix-missing tzdata sed build-essential dialog nano apt-utils cron wget git curl zip openssl gettext-base
+
+RUN apt-get -y autoremove && \
+    apt-get clean
+
+RUN a2enmod rewrite
+RUN a2enmod headers
+
+RUN service apache2 restart
+
+RUN mkdir -p /var/log/cron && \
+    chmod 755 /var/log/cron && \
+    touch /var/log/cron/cron.log
+
+RUN echo "* * * * * root /var/www/html/Asset/resource/cron/cron.sh >> /var/log/cron/cron.log 2>&1" > /etc/cron.d/cron-task && \
+    chmod 0644 /etc/cron.d/cron-task
+
+CMD cron && /usr/local/bin/apache2-foreground && chmod +x /var/www/html/Asset/resource/cron/cron.sh && tail -f /var/log/cron/cron.log

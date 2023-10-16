@@ -1,0 +1,120 @@
+version: "3.8"
+
+services:
+
+  reverse-proxy:
+    env_file:
+      - .env
+    container_name: Proxy-Server
+    image: nginxproxy/nginx-proxy
+    restart: always
+    depends_on:
+      - webserver
+      - phpmyadmin
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    extra_hosts:
+      - "${LH_WEB_SERVER_DOMAIN}:127.0.0.1"
+      - "${LH_PHPMYADMIN_DOMAIN}:127.0.0.1"
+    ports:
+      - ${LH_HOST_MACHINE_UNSECURE_HOST_PORT}:80
+    networks:
+      - lamp-network
+    environment:
+      - HTTPS_METHOD=noredirect
+      - TRUST_DOWNSTREAM_PROXY=true
+      - ENABLE_WEBSOCKETS=true
+    privileged: true
+    tty: true
+
+  webserver:
+    env_file:
+      - .env
+    container_name: ${LH_PROJECT_NAME}-Web-Server
+    build:
+      context: ./bin/${LH_PHP_ENVIRONMENT}
+      dockerfile: Dockerfile
+      args:
+        VIRTUAL_HOST: ${LH_WEB_SERVER_DOMAIN}
+    restart: always
+    expose:
+      - 80
+    networks:
+      - lamp-network
+    volumes:
+      - ${LH_PROJECT_ROOT}:/var/www/html:rw
+      - ${LH_PROJECT_ROOT}${LH_DOCUMENT_ROOT}:/var/www/html/${LH_DOCUMENT_ROOT}:rw
+      - ${LH_VHOST_DIR}:/etc/apache2/sites-enabled
+      - ${LH_PHP_INI}:/usr/local/etc/php/php.ini
+      - ${LH_LOG_DIR}:/var/log/apache2
+      - ${LH_LOG_CRON}:/var/log/cron
+    environment:
+      VIRTUAL_HOST: ${LH_WEB_SERVER_DOMAIN}
+      LH_WEB_MASTER: ${LH_WEB_MASTER}
+      LH_APACHE_DOCUMENT_ROOT: ${LH_APACHE_DOCUMENT_ROOT}
+      LH_DOCUMENT_ROOT: ${LH_DOCUMENT_ROOT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - "lh2.setup.description=Web Server"
+      - "lh2.setup.role=webserver"
+    privileged: true
+    tty: true
+
+  database:
+    env_file:
+      - .env
+    build:
+      context: ./bin/${LH_DATABASE}
+    container_name: ${LH_PROJECT_NAME}-${LH_DATABASE}
+    restart: always
+    networks:
+      - lamp-network
+    ports:
+      - "127.0.0.1:${LH_HOST_MACHINE_MYSQL_PORT}:${LH_HOST_MACHINE_MYSQL_PORT}"
+    volumes:
+      - ${LH_MYSQL_DATA_DIR}:/var/lib/mysql
+      - ${LH_MYSQL_LOG_DIR}:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${LH_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${LH_MYSQL_DATABASE}
+      MYSQL_USER: ${LH_MYSQL_USER}
+      MYSQL_PASSWORD: ${LH_MYSQL_PASSWORD}
+    labels:
+      - "lh2.setup.description=Database Server"
+      - "lh2.setup.role=database"
+      
+  phpmyadmin:
+    env_file:
+      - .env
+    container_name: ${LH_PROJECT_NAME}-phpMyAdmin
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    expose:
+      - 80
+    depends_on:
+      - database
+    environment:
+      VIRTUAL_HOST: ${LH_PHPMYADMIN_DOMAIN}
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${LH_MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${LH_MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${LH_MYSQL_USER}
+      MYSQL_PASSWORD: ${LH_MYSQL_PASSWORD}
+      UPLOAD_LIMIT: ${LH_UPLOAD_LIMIT}
+      MEMORY_LIMIT: ${LH_MEMORY_LIMIT}
+    volumes:
+      - /sessions
+      - ${LH_PHP_INI}:/usr/local/etc/php/conf.d/php-phpmyadmin.ini
+    networks:
+      - lamp-network
+    labels:
+      - "lh2.setup.description=phpMyAdmin"
+      - "lh2.setup.role=phpmyadmin"
+
+networks:
+  lamp-network:
+    name: lamp-network
+    driver: bridge

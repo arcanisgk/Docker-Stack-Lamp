@@ -1,0 +1,14 @@
+*.log
+*.crt
+*.key
+summary.txt
+/project/*
+/docker/.env
+/docker/docker-compose.yml
+/docker/data/*
+/docker/config/ssl/*
+/docker/config/vhost/*
+!/project/.gitkeep
+!/docker/data/.gitkeep
+!/docker/config/ssl/.gitkeep
+!/docker/config/vhost/.gitkeep
