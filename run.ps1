@@ -113,7 +113,7 @@ function Get-DefaultOrCustom {
     Get-TittleScreen
     Write-Host "`n Configure custom URLs to use locally."  -ForegroundColor "Red"
     Write-Host " Note: At this point you will decide if you want to use custom URLs or the ones that Stack uses by default."
-    Write-Host "`n => 1. Use the default url [ lh-stack.dock | pma.lh-stack.dock ]."
+    Write-Host "`n => 1. Use the default url [ lh-stack.dock | pma.lh-stack.dock | cron.lh-stack.dock ]."
     Write-Host " => 2. Indicate the URLs you want to Implement."
     Get-AddCyanLine
     $choice = Read-Host " Choose option 1 or 2 (Press any key for default: 1)"
@@ -125,14 +125,11 @@ function Get-DefaultOrCustom {
 }
 
 function Get-Url {
-    param (
-        [string]$texto
-    )
     [Console]::Clear()
     Get-TittleScreen
     Write-Host "`n Indicate here a URL to use."
-    Write-Host " Note: Try to make your url belong to a wildcard (example.dock, pma.example.dock)"
-    Write-Host " $texto"
+    Write-Host " Note: keep in mind that the system will create the URLs belonging to a wildcard."
+    Write-Host " Example: [myapp]`n result: myapp.dock, pma.myapp.dock, cron.myapp.dock"
     Get-AddCyanLine
     Write-Host " ==> : " -NoNewline -ForegroundColor "Red"
     return Read-Host
@@ -141,7 +138,8 @@ function Get-Url {
 function Get-UrlConfirm {
     param (
         [string]$main_url,
-        [string]$pma_url
+        [string]$pma_url,
+        [string]$cron_url
     )
     [Console]::Clear()
     Get-TittleScreen
@@ -149,6 +147,7 @@ function Get-UrlConfirm {
     Write-Host " You have requested the configuration of custom URLs:"
     Write-Host "`n Main Url: $main_url" -ForegroundColor "Yellow"
     Write-Host " PhpMyAdmin: $pma_url" -ForegroundColor "Yellow"
+    Write-Host " crontab-ui: $cron_url" -ForegroundColor "Yellow"
     Write-Host "`n => press [Y]es or any key to confirm and continue."
     Write-Host " => press [N]o to set it again."
     Get-AddCyanLine
@@ -171,7 +170,7 @@ function Get-SslCerts {
     Write-Host "`n SSL certificates are required for this instance."  -ForegroundColor "Red"
     Get-AddTask; Write-Host "Generating Certificates with mkcert..."
     $certPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
-    mkcert -cert-file "$certPath$main_url.crt" -key-file "$certPath$main_url.key" "$main_url" "*.$main_url" "$pma_url" "*.$pma_url" >> run.log 2>&1
+    mkcert -cert-file "$certPath$main_url.crt" -key-file "$certPath$main_url.key" "$main_url" "*.$main_url" >> run.log 2>&1
     Get-EndTask; Write-Host "SSL Certificates Generated!!!!!!"
     Get-AddCyanLine
     Get-Pause
@@ -279,6 +278,7 @@ function Set-EnvironmentVariables {
     param (
         [string]$main_url,
         [string]$pma_url,
+        [string]$cron_url,
         [PSCustomObject]$dbConfig,
         [string]$email,
         [string]$dockroot
@@ -290,12 +290,10 @@ function Set-EnvironmentVariables {
     [System.Environment]::SetEnvironmentVariable("LH_PROJECT_NAME", $project_name_Uppercase, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_MAIN_WEB", $main_url, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_PMA_WEB", $pma_url, [System.EnvironmentVariableTarget]::Process)
+    [System.Environment]::SetEnvironmentVariable("LH_CRONTAB_DOMAIN", $cron_url, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_MYSQL_USER", $dbConfig.Username, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_MYSQL_PASSWORD", $dbConfig.Password, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_DEV_MAIL", $email, [System.EnvironmentVariableTarget]::Process)
-
-    Write-Host $dockroot
-
     [System.Environment]::SetEnvironmentVariable("LH_DOCUMENT_ROOT", $dockroot, [System.EnvironmentVariableTarget]::Process)
     Get-EndTask; Write-Host " --> Project Name: " -ForegroundColor "Cyan" -NoNewline
     Write-Host "$project_name_Uppercase ($project_name)" -ForegroundColor "Yellow"
@@ -475,6 +473,7 @@ function Get-SuccessfulInstall {
         [string]$protocol,
         [string]$main_url,
         [string]$pma_url,
+        [string]$cron_url,
         [PSCustomObject]$dbConfig,
         [string]$email,
         [string]$dockroot
@@ -486,6 +485,8 @@ function Get-SuccessfulInstall {
     Write-Host $protocol$main_url -ForegroundColor "Yellow"
     Write-Host " phpMyAdmin URL:      " -NoNewline
     Write-Host $protocol$pma_url -ForegroundColor "Yellow"
+    Write-Host " phpMyAdmin URL:      " -NoNewline
+    Write-Host $protocol$cron_url -ForegroundColor "Yellow"
     Write-Host " DB user:             " -NoNewline
     $user = $dbConfig.Username
     Write-Host $user -ForegroundColor "Yellow"
@@ -526,21 +527,23 @@ Install-Prerequisite -security $security
 if (Get-DefaultOrCustom -eq $true) {
     $main_url = "lh-stack.dock"
     $pma_url = "pma.lh-stack.dock"
+    $cron_url = "cron.lh-stack.dock"
 } else {
     $confirm = $true
     while ($confirm) {
-        $main_url = Get-Url -texto "Indicate what will be the Local Url of your Web Server"
-        $pma_url = Get-Url -texto "Indicate what the Local Url will be for phpMyAdmin"
-        $confirm = Get-UrlConfirm -main_url $main_url -pma_url $pma_url
+        $main_url = Get-Url
+        $main_url = "$main_url.dock"
+        $pma_url = "pma.$main_url"
+        $cron_url = "cron.$main_url"
+        $confirm = Get-UrlConfirm -main_url $main_url -pma_url $pma_url -cron_url $cron_url
     }
 }
 if($security){
     $protocol="https://"
-    Get-SslCerts -main_url $main_url -pma_url $pma_url
+    Get-SslCerts -main_url $main_url
 } else {
     $protocol="http://"
 }
-
 $dockroot = Get-DirectoryRoot
 $dockroot = $dockroot.Trim()
 $dbConfig = Get-DataBase
@@ -549,7 +552,7 @@ $email = Get-DevEmail
 [System.Console]::CursorVisible = $false
 Get-TittleScreen
 Write-Host "`n Starting the Installation of the Docker Development Environment" -ForegroundColor "Red"
-Set-EnvironmentVariables -main_url $main_url -pma_url $pma_url -dbConfig $dbConfig -email $email -dockroot $dockroot
+Set-EnvironmentVariables -main_url $main_url -pma_url $pma_url -cron_url $cron_url -dbConfig $dbConfig -email $email -dockroot $dockroot
 $file = Join-Path -Path $scriptDirectory -ChildPath "/docker/.env"
 if (Test-Path $file) {
     Get-DockerComposeYml -security $security
@@ -560,7 +563,7 @@ if (Test-Path $file) {
         if (Test-Path $file) {
             Set-NetWorkEnvironment
             Get-DockerInstall
-            Get-SuccessfulInstall -protocol $protocol -main_url $main_url -pma_url $pma_url -dbConfig $dbConfig -email $email -dockroot $dockroot
+            Get-SuccessfulInstall -protocol $protocol -main_url $main_url -pma_url $pma_url -cron_url $cron_url -dbConfig $dbConfig -email $email -dockroot $dockroot
         }else{
             Get-ErrorOutput -code "0001" -smg "Could not find virtual host configuration file."
         }

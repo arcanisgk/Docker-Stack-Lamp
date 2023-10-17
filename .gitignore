@@ -2,6 +2,7 @@
 *.crt
 *.key
 summary.txt
+/.idea/*
 /project/*
 /docker/.env
 /docker/docker-compose.yml

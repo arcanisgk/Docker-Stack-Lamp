@@ -1,4 +1,4 @@
-version: "3.8"
+version: "3.9"
 
 services:
 
@@ -16,6 +16,7 @@ services:
     extra_hosts:
       - "${LH_WEB_SERVER_DOMAIN}:127.0.0.1"
       - "${LH_PHPMYADMIN_DOMAIN}:127.0.0.1"
+      - "${LH_CRONTAB_DOMAIN}:127.0.0.1"
     ports:
       - ${LH_HOST_MACHINE_UNSECURE_HOST_PORT}:80
     networks:
@@ -34,8 +35,6 @@ services:
     build:
       context: ./bin/${LH_PHP_ENVIRONMENT}
       dockerfile: Dockerfile
-      args:
-        VIRTUAL_HOST: ${LH_WEB_SERVER_DOMAIN}
     restart: always
     expose:
       - 80
@@ -46,10 +45,12 @@ services:
       - ${LH_PROJECT_ROOT}${LH_DOCUMENT_ROOT}:/var/www/html/${LH_DOCUMENT_ROOT}:rw
       - ${LH_VHOST_DIR}:/etc/apache2/sites-enabled
       - ${LH_PHP_INI}:/usr/local/etc/php/php.ini
+      - ${LH_CRON_TASK}:/etc/cron-task
+      - ${LH_DATA_CRON}:/data/cron
       - ${LH_LOG_DIR}:/var/log/apache2
       - ${LH_LOG_CRON}:/var/log/cron
     environment:
-      VIRTUAL_HOST: ${LH_WEB_SERVER_DOMAIN}
+      VIRTUAL_HOST: ${LH_WEB_SERVER_DOMAIN},${LH_CRONTAB_DOMAIN}
       LH_WEB_MASTER: ${LH_WEB_MASTER}
       LH_APACHE_DOCUMENT_ROOT: ${LH_APACHE_DOCUMENT_ROOT}
       LH_DOCUMENT_ROOT: ${LH_DOCUMENT_ROOT}
