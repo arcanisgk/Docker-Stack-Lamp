@@ -29,6 +29,7 @@ When you initialize the system, it will ask you for a series of data and then on
 
 ![finish installation view](https://i.imgur.com/EI6oVrD.png)
 
+Note: Shortcuts are also created on the desktop.
 
 ### Example videos:
 
@@ -80,6 +81,12 @@ phpMyAdmin environment:
 crontab-ui environment:
 
 ![crontab-ui view](https://i.imgur.com/7I40e1I.png)
+
+### Coming soon 2024:
+
+- Hot Setup modification, adding new web containers.
+- Support for Linux operating system.
+- Support for Mac Os operating system.
 
 ### Contributing:
 

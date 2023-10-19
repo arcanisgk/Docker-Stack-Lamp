@@ -185,7 +185,7 @@ function Set-Destination {
     if (-not (Test-Path -Path $destinationPath -PathType Container)) {
         $null = New-Item -Path $destinationPath -ItemType Directory | Out-Null
     }
-    Copy-Item -Path $sourceFile -Destination $destinationPath
+    Copy-Item -Path $sourceFile -Destination $destinationPath -Recurse
 }
 
 function Get-DirectoryRoot {
@@ -219,7 +219,7 @@ function Get-DirectoryRoot {
         if (-not (Test-Path -Path $destinationPath -PathType Container)) {
             New-Item -Path $destinationPath -ItemType Directory
         }
-        Copy-Item -Path $sourceFile -Destination $destinationPath
+        Copy-Item -Path $sourceFile -Destination $destinationPath -Recurse
         Get-Pause
         return "/"
     }
@@ -495,6 +495,26 @@ function Get-DockerInstall {
     Get-Pause
 }
 
+function Set-Shortcut {
+    param (
+        [string]$protocol,
+        [PSCustomObject]$urls
+    )
+    $desktopPath = [System.Environment]::GetFolderPath('Desktop')
+    foreach ($urlTemp in $urls.PSObject.Properties) {
+        $site = $urlTemp.Name
+        $url = $urlTemp.Value
+        $websiteName = [System.IO.Path]::GetFileNameWithoutExtension($url)
+        $shell = New-Object -ComObject WScript.Shell
+        $shortcut = $shell.CreateShortcut("$desktopPath\$websiteName.lnk")
+        $shortcut.TargetPath = "$protocol$url"
+        $iconPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/icon/$site.ico"
+        $shortcut.IconLocation = $iconPath
+        $shortcut.Save()
+    }
+}
+
+
 function Get-SuccessfulInstall {
     param (
         [string]$protocol,
@@ -507,6 +527,12 @@ function Get-SuccessfulInstall {
     )
     [Console]::Clear()
     Get-TittleScreen
+    $urls = New-Object PSObject -Property @{
+        main = $main_url
+        pma = $pma_url
+        cron = $cron_url
+    }
+    Set-Shortcut -urls $urls -protocol $protocol
     Write-Host "`n Docker LAMP Stack Installation Summary" -ForegroundColor "Red"
     Write-Host "`n Main Web Server URL: " -NoNewline
     Write-Host $protocol$main_url -ForegroundColor "Yellow"
@@ -521,6 +547,8 @@ function Get-SuccessfulInstall {
     Write-Host "********" -ForegroundColor "Yellow"
     Write-Host " Dev e-mail:         " -NoNewline
     Write-Host $email -ForegroundColor "Yellow"
+    Get-AddCyanLine
+    Write-Host "`n There are new desktop shortcuts to development urls." -ForegroundColor "Red"
     Get-AddCyanLine
     Write-Host "`n To develop code, the Windows path has been set to:" -ForegroundColor "Red"
     Write-Host "`n Project Root (all code):"
