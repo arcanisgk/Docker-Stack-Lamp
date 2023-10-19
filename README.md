@@ -10,6 +10,34 @@ It does not require further knowledge in Docker, since the assembly of the param
 
 you need to have installed and Open docker/docker desktop and version WSL2.0 put off Ubuntu
 
+### Lamp stack structure:
+
+In this project, the system or stack lamp has been completely separated from the resources/content of the development to be carried out:
+
+```PS
+Docker-Stack-Lamp       # Directory that where main you chose
+├───docker              # Structure of the Stack Lamp
+│   ├───bin             # Where the Dockerfiles of the containers that require it are hosted
+│   ├───config          # Where the parameter files of some of the available services are hosted.
+│   │   ├───cron
+│   │   ├───php
+│   │   ├───ssl
+│   │   └───vhost
+│   ├───data            # Where data persistence is hosted.
+│   │   ├───cron
+│   │   └───mysql
+│   ├───log             # Where the service log files are stored.
+│   │   ├───apache2
+│   │   ├───cron
+│   │   ├───mysql
+│   │   └───xdebug
+│   └───tpl             # Template directory for docker.
+│       ├───icon
+│       └───public
+└───project             # Development directory where your web project will be or should be added
+```
+
+
 ### Installation of this setup:
 
 1. Download or clone to where you want your project to be.
