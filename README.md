@@ -43,7 +43,7 @@ https://youtu.be/j44xViK3Ass
 ### What does this stack lamp include?
 
 - Self-signed SSL support and automatic generation.
-- php 8.1 version
+- php version selectable: **v7.2**, **v7.4**, **v8.0**, **v8.1** and **v8.2**
 - custom entry point and project directory
 - mysql 8 (latest)
 - phpmyadmin (latest)

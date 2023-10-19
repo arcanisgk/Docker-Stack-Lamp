@@ -1,21 +1,21 @@
-FROM php:8.1-apache-bullseye
+ARG LH_PHP_VERSION
+
+FROM php:${LH_PHP_VERSION}-apache-bullseye
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update &&  \
     apt-get upgrade -y --no-install-recommends --fix-missing
 
-RUN apt-get install -y --no-install-recommends --fix-missing tzdata sed build-essential dialog nano apt-utils cron wget git curl zip openssl gettext-base libnss3-tools
+RUN apt-get install -y --no-install-recommends --fix-missing tzdata sed build-essential dialog nano apt-utils cron wget git curl zip openssl gettext-base
 
 RUN apt-get -y autoremove && \
     apt-get clean
 
 RUN a2enmod proxy
 RUN a2enmod proxy_http
-RUN a2enmod rewrite 
-RUN a2enmod ssl 
-RUN a2enmod headers 
-RUN a2enmod proxy_wstunnel
+RUN a2enmod rewrite
+RUN a2enmod headers
 
 RUN service apache2 restart
 

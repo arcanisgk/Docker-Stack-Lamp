@@ -35,6 +35,8 @@ services:
     build:
       context: ./bin/${LH_PHP_ENVIRONMENT}
       dockerfile: Dockerfile
+      args:
+        - LH_PHP_VERSION=${LH_PHP_VERSION}
     restart: always
     expose:
       - 80

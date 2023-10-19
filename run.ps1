@@ -225,6 +225,30 @@ function Get-DirectoryRoot {
     }
 }
 
+function Get-PhpVersion {
+    [Console]::Clear()
+    Get-TittleScreen
+    Write-Host "`n PHP Version.`n"  -ForegroundColor "Red"
+    Write-Host " Choose one of these PHP versions to be installed:"
+    Write-Host "`n => 1. v7.2"
+    Write-Host " => 2. v7.4"
+    Write-Host " => 3. v8.0"
+    Write-Host " => 4. v8.1"
+    Write-Host " => 5. v8.2`n"
+    $choice = Read-Host " Choose option 1, 2, 3, 4 or 5 (Press any key for default: 5)"
+    if ($choice -eq "1") {
+        return "7.2"
+    } elseif($choice -eq "2") {
+        return "7.4"
+    } elseif($choice -eq "3") {
+        return "8.0"
+    } elseif($choice -eq "4") {
+        return "8.1"
+    } else {
+        return "8.2"
+    }
+}
+
 function Get-DataBase {
     [Console]::Clear()
     Get-TittleScreen
@@ -281,7 +305,8 @@ function Set-EnvironmentVariables {
         [string]$cron_url,
         [PSCustomObject]$dbConfig,
         [string]$email,
-        [string]$dockroot
+        [string]$dockroot,
+        [string]$phpVersion
     )
     Get-AddTask; Write-Host "Search and Organization of Environment Variables..."
     $project_name = [System.IO.Path]::GetFileNameWithoutExtension($main_url)
@@ -295,6 +320,7 @@ function Set-EnvironmentVariables {
     [System.Environment]::SetEnvironmentVariable("LH_MYSQL_PASSWORD", $dbConfig.Password, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_DEV_MAIL", $email, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_DOCUMENT_ROOT", $dockroot, [System.EnvironmentVariableTarget]::Process)
+    [System.Environment]::SetEnvironmentVariable("LH_PHP_VERSION", $phpVersion, [System.EnvironmentVariableTarget]::Process)
     Get-EndTask; Write-Host " --> Project Name: " -ForegroundColor "Cyan" -NoNewline
     Write-Host "$project_name_Uppercase ($project_name)" -ForegroundColor "Yellow"
     $envFilePath = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/tpl.dev.env"
@@ -463,7 +489,8 @@ function Get-DockerInstall {
     Get-AddTask; Write-Host "Starting the downloading of image and construction of containers...`n`n"
     $env:DOCKER_HOST = "tcp://localhost:2375"
     $path = Join-Path -Path $scriptDirectory -ChildPath "/docker/docker-compose.yml"
-    docker-compose -p lh-stack -f $path up -d --build --force-recreate
+    $stackName = [System.Environment]::GetEnvironmentVariable('LH_SYSTEM_NAME')
+    docker-compose -p $stackName -f $path up -d --build --force-recreate
     Get-EndTask; Write-Host " --> Installation completed successfully!!!"
     Get-Pause
 }
@@ -546,13 +573,14 @@ if($security){
 }
 $dockroot = Get-DirectoryRoot
 $dockroot = $dockroot.Trim()
+$phpVersion = Get-PhpVersion
 $dbConfig = Get-DataBase
 $email = Get-DevEmail
 [Console]::Clear()
 [System.Console]::CursorVisible = $false
 Get-TittleScreen
 Write-Host "`n Starting the Installation of the Docker Development Environment" -ForegroundColor "Red"
-Set-EnvironmentVariables -main_url $main_url -pma_url $pma_url -cron_url $cron_url -dbConfig $dbConfig -email $email -dockroot $dockroot
+Set-EnvironmentVariables -main_url $main_url -pma_url $pma_url -cron_url $cron_url -dbConfig $dbConfig -email $email -dockroot $dockroot -phpVersion $phpVersion
 $file = Join-Path -Path $scriptDirectory -ChildPath "/docker/.env"
 if (Test-Path $file) {
     Get-DockerComposeYml -security $security
