@@ -490,6 +490,7 @@ function Get-DockerInstall {
     $env:DOCKER_HOST = "tcp://localhost:2375"
     $path = Join-Path -Path $scriptDirectory -ChildPath "/docker/docker-compose.yml"
     $stackName = [System.Environment]::GetEnvironmentVariable('LH_SYSTEM_NAME')
+    docker network create --driver bridge lamp-network
     docker-compose -p $stackName -f $path up -d --build
     Get-EndTask; Write-Host " --> Installation completed successfully!!!"
     Get-Pause

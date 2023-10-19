@@ -7,7 +7,7 @@ services:
       - .env
     container_name: Proxy-Server
     image: nginxproxy/nginx-proxy
-    restart: always
+    restart: unless-stopped
     depends_on:
       - webserver
       - phpmyadmin
@@ -38,7 +38,7 @@ services:
       dockerfile: Dockerfile.secure
       args:
         - LH_PHP_VERSION=${LH_PHP_VERSION}
-    restart: always
+    restart: unless-stopped
     expose:
       - 80
     networks:
@@ -71,7 +71,7 @@ services:
     build:
       context: ./bin/${LH_DATABASE}
     container_name: MySql-Server
-    restart: always
+    restart: unless-stopped
     networks:
       - lamp-network
     ports:
@@ -93,7 +93,7 @@ services:
       - .env
     container_name: phpMyAdmin-Server
     image: phpmyadmin/phpmyadmin
-    restart: always
+    restart: unless-stopped
     expose:
       - 80
     depends_on:
@@ -120,5 +120,4 @@ services:
 
 networks:
   lamp-network:
-    name: lamp-network
-    driver: bridge
+    external: true
