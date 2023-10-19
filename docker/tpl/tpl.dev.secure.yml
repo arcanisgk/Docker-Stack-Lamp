@@ -28,7 +28,6 @@ services:
       - ENABLE_WEBSOCKETS=true
     privileged: true
     tty: true
-    scale: 1
 
   webserver:
     env_file:
@@ -65,7 +64,6 @@ services:
       - "lh-stack.webserver.role=webserver"
     privileged: true
     tty: true
-    scale: 100
 
   database:
     env_file:
@@ -89,7 +87,6 @@ services:
     labels:
       - "lh-stack.database.description=Database Server"
       - "lh-stack.database.role=database"
-    scale: 1
       
   phpmyadmin:
     env_file:
@@ -120,7 +117,6 @@ services:
     labels:
       - "lh-stack.phpmyadmin.description=phpMyAdmin"
       - "lh-stack.phpmyadmin.role=phpmyadmin"
-    scale: 1
 
 networks:
   lamp-network:
