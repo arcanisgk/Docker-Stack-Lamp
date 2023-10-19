@@ -28,11 +28,12 @@ services:
       - ENABLE_WEBSOCKETS=true
     privileged: true
     tty: true
+    scale: 1
 
   webserver:
     env_file:
       - .env
-    container_name: ${LH_PROJECT_NAME}-Web-Server
+    container_name: Web-Server-${LH_PROJECT_NAME}
     build:
       context: ./bin/${LH_PHP_ENVIRONMENT}
       dockerfile: Dockerfile.secure
@@ -60,17 +61,18 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     labels:
-      - "lh2.setup.description=Web Server"
-      - "lh2.setup.role=webserver"
+      - "lh-stack.webserver.description=Web Server"
+      - "lh-stack.webserver.role=webserver"
     privileged: true
     tty: true
+    scale: 100
 
   database:
     env_file:
       - .env
     build:
       context: ./bin/${LH_DATABASE}
-    container_name: ${LH_PROJECT_NAME}-${LH_DATABASE}
+    container_name: MySql-Server
     restart: always
     networks:
       - lamp-network
@@ -85,13 +87,14 @@ services:
       MYSQL_USER: ${LH_MYSQL_USER}
       MYSQL_PASSWORD: ${LH_MYSQL_PASSWORD}
     labels:
-      - "lh2.setup.description=Database Server"
-      - "lh2.setup.role=database"
+      - "lh-stack.database.description=Database Server"
+      - "lh-stack.database.role=database"
+    scale: 1
       
   phpmyadmin:
     env_file:
       - .env
-    container_name: ${LH_PROJECT_NAME}-phpMyAdmin
+    container_name: phpMyAdmin-Server
     image: phpmyadmin/phpmyadmin
     restart: always
     expose:
@@ -115,8 +118,9 @@ services:
     networks:
       - lamp-network
     labels:
-      - "lh2.setup.description=phpMyAdmin"
-      - "lh2.setup.role=phpmyadmin"
+      - "lh-stack.phpmyadmin.description=phpMyAdmin"
+      - "lh-stack.phpmyadmin.role=phpmyadmin"
+    scale: 1
 
 networks:
   lamp-network:
