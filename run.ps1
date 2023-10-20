@@ -560,8 +560,8 @@ function Get-DockerInstall {
     Get-EndTask; Write-Host " --> Installation completed successfully!!!"
     if($postInstall){
         Get-AddTask; Write-Host "Starting the Post-Installation...`n`n"
-        $sslLocalPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$($Urls.main_url)"
-        $command2 = "docker cp $sslLocalPath Proxy-Server:/etc/nginx/certs"
+        $sslLocalPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$($Urls.main_url)/*"
+        $command2 = "docker cp $sslLocalPath Proxy-Server:/etc/nginx/certs/"
         Invoke-Expression -Command $command2
         Get-EndTask; Write-Host " --> Post-Installation completed successfully!!!"
     }
