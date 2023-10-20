@@ -15,11 +15,12 @@ services:
       - webserver
       - phpmyadmin
     environment:
+      - HTTPS_METHOD=noredirect
       - TRUST_DOWNSTREAM_PROXY=true
       - ENABLE_WEBSOCKETS=true
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./config/ssl:/etc/nginx/certs
+      - ./config/ssl/${LH_WEB_SERVER_DOMAIN}:/etc/nginx/certs
     networks:
       - lamp-network
     extra_hosts:

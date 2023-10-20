@@ -111,10 +111,10 @@ function Get-Security {
 function Get-DefaultOrCustom {
     [Console]::Clear()
     Get-TittleScreen
-    Write-Host "`n Configure custom URLs to use locally."  -ForegroundColor "Red"
-    Write-Host " Note: At this point you will decide if you want to use custom URLs or the ones that Stack uses by default."
-    Write-Host "`n => 1. Use the default url [ lh-stack.dock | pma.lh-stack.dock | cron.lh-stack.dock ]."
-    Write-Host " => 2. Indicate the URLs you want to Implement."
+    Write-Host "`n Configure custom URL to use locally."  -ForegroundColor "Red"
+    Write-Host " Note: At this point you will decide if you want to use custom URL or the ones that Stack uses by default."
+    Write-Host "`n => 1. Use the default URL [ lh-stack.dock ]"
+    Write-Host " => 2. Indicate the URL you want to Implement."
     Get-AddCyanLine
     $choice = Read-Host " Choose option 1 or 2 (Press any key for default: 1)"
     if ($choice -eq "2") {
@@ -128,8 +128,7 @@ function Get-Url {
     [Console]::Clear()
     Get-TittleScreen
     Write-Host "`n Indicate here a URL to use."
-    Write-Host " Note: keep in mind that the system will create the URLs belonging to a wildcard."
-    Write-Host " Example: [myapp]`n result: myapp.dock, pma.myapp.dock, cron.myapp.dock"
+    Write-Host " Example: [myapp]`n result: myapp.dock"
     Get-AddCyanLine
     Write-Host " ==> : " -NoNewline -ForegroundColor "Red"
     return Read-Host
@@ -137,17 +136,16 @@ function Get-Url {
 
 function Get-UrlConfirm {
     param (
-        [string]$main_url,
-        [string]$pma_url,
-        [string]$cron_url
+        [PSCustomObject]$Urls
     )
     [Console]::Clear()
     Get-TittleScreen
     Write-Host "`n Confirmation URL."  -ForegroundColor "Red"
-    Write-Host " You have requested the configuration of custom URLs:"
-    Write-Host "`n Main Url: $main_url" -ForegroundColor "Yellow"
-    Write-Host " PhpMyAdmin: $pma_url" -ForegroundColor "Yellow"
-    Write-Host " crontab-ui: $cron_url" -ForegroundColor "Yellow"
+    Write-Host " You have requested the configuration of custom URL:"
+    Write-Host "`n Main Url: $($Urls.main_url)" -ForegroundColor "Yellow"
+    Write-Host " PhpMyAdmin: $($Urls.pma_url)" -ForegroundColor "Yellow"
+    Write-Host " crontab-ui: $($Urls.cron_url)" -ForegroundColor "Yellow"
+    Write-Host " Note: keep in mind that pma and cron are static url on stack."
     Write-Host "`n => press [Y]es or any key to confirm and continue."
     Write-Host " => press [N]o to set it again."
     Get-AddCyanLine
@@ -160,17 +158,40 @@ function Get-UrlConfirm {
     }
 }
 
+function Set-DirectoryForSSL {
+    param(
+        [string]$certPath
+    )
+    if (-not (Test-Path -Path $certPath -PathType Container)) {
+        $null = New-Item -Path $certPath -ItemType Directory -Force | Out-Null
+    }
+}
+
 function Get-SslCerts {
     param (
-        [string]$main_url,
-        [string]$pma_url
+        [PSCustomObject]$Urls
     )
     [Console]::Clear()
     Get-TittleScreen
     Write-Host "`n SSL certificates are required for this instance."  -ForegroundColor "Red"
     Get-AddTask; Write-Host "Generating Certificates with mkcert..."
-    $certPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
-    mkcert -cert-file "$certPath$main_url.crt" -key-file "$certPath$main_url.key" "$main_url" "*.$main_url" >> run.log 2>&1
+    if($Urls.main_url -eq $Urls.stack_url) {
+        $site = $Urls.main_url
+        $certPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$site/"
+        Set-DirectoryForSSL -certPath $certPath
+        mkcert -cert-file "$certPath$site.crt" -key-file "$certPath$site.key" "$site" "*.$site" >> run.log 2>&1
+    } else {
+        $site1 = $Urls.main_url
+        $certPath1 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$site1/"
+        Set-DirectoryForSSL -certPath $certPath1
+        mkcert -cert-file "$certPath1$site1.crt" -key-file "$certPath1$site1.key" "$site1" "*.$site1" >> run.log 2>&1
+        $site2 = $Urls.stack_url
+        $certPath2 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$site2/"
+        if (-not (Test-Path -Path $certPath2 -PathType Container)) {
+            Set-DirectoryForSSL -certPath $certPath2
+            mkcert -cert-file "$certPath2$site2.crt" -key-file "$certPath2$site2.key" "$site2" "*.$site2" >> run.log 2>&1
+        }
+    }
     Get-EndTask; Write-Host "SSL Certificates Generated!!!!!!"
     Get-AddCyanLine
     Get-Pause
@@ -300,22 +321,20 @@ function Get-DevEmail {
 
 function Set-EnvironmentVariables {
     param (
-        [string]$main_url,
-        [string]$pma_url,
-        [string]$cron_url,
+        [PSCustomObject]$Urls,
         [PSCustomObject]$dbConfig,
         [string]$email,
         [string]$dockroot,
         [string]$phpVersion
     )
     Get-AddTask; Write-Host "Search and Organization of Environment Variables..."
-    $project_name = [System.IO.Path]::GetFileNameWithoutExtension($main_url)
+    $project_name = [System.IO.Path]::GetFileNameWithoutExtension($Urls.main_url)
     $project_name_Uppercase = $project_name.ToUpper()
     [System.Environment]::SetEnvironmentVariable("LH_SYSTEM_NAME", $project_name, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_PROJECT_NAME", $project_name_Uppercase, [System.EnvironmentVariableTarget]::Process)
-    [System.Environment]::SetEnvironmentVariable("LH_MAIN_WEB", $main_url, [System.EnvironmentVariableTarget]::Process)
-    [System.Environment]::SetEnvironmentVariable("LH_PMA_WEB", $pma_url, [System.EnvironmentVariableTarget]::Process)
-    [System.Environment]::SetEnvironmentVariable("LH_CRONTAB_DOMAIN", $cron_url, [System.EnvironmentVariableTarget]::Process)
+    [System.Environment]::SetEnvironmentVariable("LH_MAIN_WEB", $Urls.main_url, [System.EnvironmentVariableTarget]::Process)
+    [System.Environment]::SetEnvironmentVariable("LH_PMA_WEB", $Urls.pma_url, [System.EnvironmentVariableTarget]::Process)
+    [System.Environment]::SetEnvironmentVariable("LH_CRONTAB_DOMAIN", $Urls.cron_url, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_MYSQL_USER", $dbConfig.Username, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_MYSQL_PASSWORD", $dbConfig.Password, [System.EnvironmentVariableTarget]::Process)
     [System.Environment]::SetEnvironmentVariable("LH_DEV_MAIL", $email, [System.EnvironmentVariableTarget]::Process)
@@ -452,35 +471,35 @@ function Get-VhostFile {
 
 function Set-NetWorkEnvironment {
     param (
-        [string]$main_url,
-        [string]$pma_url,
-        [string]$cron_url
+        [PSCustomObject]$Urls
     )
-    Get-AddTask; Write-Host "Applying network settings for Local URLs..."
+    Get-AddTask;Write-Host "Applying network settings for Local URLs..."
     $hosts_file = "${env:SystemRoot}\System32\drivers\etc\hosts"
     $current_content = Get-Content $hosts_file -Raw
-    $pattern = "(?ms)(# Developer Area Docker.*?# End of Area)"
-    if ($current_content -match $pattern) {
-        $host_entry = $matches[0] -split "`r`n" | Select-Object -Skip 1 | Select-Object -First 1
-        $old_url = $host_entry -split " "
-        $newUrls = $main_url,$pma_url,$cron_url
-        $newEntry = ""
-        foreach ($newUrl in $newUrls) {
-            if ($old_url -notcontains $newUrl) {
-                $newEntry += " $newUrl"
-            }
+    $lines = $current_content -split "`r`n"
+    $start_marker = "# Developer Area Docker"
+    $end_marker = "# End of Area"
+    $startIndex = [array]::IndexOf($lines, $start_marker)
+    if ($startIndex -ge 0) {
+        $endIndex = [array]::IndexOf($lines, $end_marker, $startIndex)
+        if ($endIndex -lt 0) {
+            $endIndex = $lines.Length - 1
         }
-        $current_content = $current_content -replace $pattern, ("# Developer Area Docker`n127.0.0.1 $host_entry $newEntry`n# End of Area")
-        $current_content = $current_content -replace "(\r?\n)+\z", ""
-        Set-Content -Path $hosts_file -Value $current_content
-        Get-EndTask; Write-Host " --> Updated operating system hosts file."
+        $newEntries = @("127.0.0.1 $($Urls.main_url)", "127.0.0.1 $($Urls.pma_url)", "127.0.0.1 $($Urls.cron_url)")
+        $existingEntries = $lines[($startIndex + 1)..$endIndex]
+        $entriesToAdd = $newEntries | Where-Object { $_ -notin $existingEntries }
+        $lines = $lines[0..$startIndex] + $entriesToAdd + $lines[($startIndex + 1)..($lines.Length - 1)]
     } else {
-        $host_entry = "127.0.0.1 $main_url $pma_url $cron_url"
-        $current_content += "`n# Developer Area Docker`n$host_entry`n# End of Area"
-        $current_content = $current_content -replace "(\r?\n)+\z", ""
-        Set-Content -Path $hosts_file -Value $current_content
-        Get-EndTask; Write-Host " --> The Host section was added at the end of the hosts file."
+        $lines += $start_marker
+        $lines += "127.0.0.1 $($Urls.main_url)"
+        $lines += "127.0.0.1 $($Urls.pma_url)"
+        $lines += "127.0.0.1 $($Urls.cron_url)"
+        $lines += $end_marker
     }
+    $updated_content = $lines -join "`r`n"
+    Set-Content -Path $hosts_file -Value $updated_content
+    Get-EndTask
+    Write-Host " --> Updated operating system hosts file."
     Get-Pause
 }
 
@@ -494,7 +513,9 @@ function Set-DockerNetwork{
 
 function Get-DockerInstall {
     param (
-        [boolean]$security
+        [boolean]$security,
+        [PSCustomObject]$Urls,
+        [PSCustomObject]$StaticContainers
     )
     [Console]::Clear()
     Get-TittleScreen
@@ -506,35 +527,44 @@ function Get-DockerInstall {
     } else {
         Get-ErrorOutput -code "0002" -smg "You must install and open Docker manually before using this program."
     }
-    Get-AddTask; Write-Host "Starting the downloading of image and construction of containers...`n`n"
     $env:DOCKER_HOST = "tcp://localhost:2375"
     $path = Join-Path -Path $scriptDirectory -ChildPath "/docker/"
     $stackName = [System.Environment]::GetEnvironmentVariable('LH_SYSTEM_NAME')
     Set-DockerNetwork
-    $containerStructure = New-Object PSObject -Property @{
-        "MySql-Server" = "db"
-        "Proxy-Server" = ""
-    }
-    if ($security) {
-        $containerStructure."Proxy-Server" = "nginx.ssl"
-    } else {
-        $containerStructure."Proxy-Server" = "nginx"
-    }
+    Get-AddTask; Write-Host "List containers to be installed...`n`n"
     $files = ""
-    foreach ($container in $containerStructure.PSObject.Properties) {
+    $tobeInstalled = ""
+    foreach ($container in $StaticContainers.PSObject.Properties) {
         $containerName = $container.Name
         $file = $container.Value
         $containerExist = docker ps --filter "name=$containerName" --format '{{.Names}}'
         if (-not ($containerExist -contains $containerName)) {
             $files +=" -f $path$file.yml"
+            $tobeInstalled +="`n $containerName"
         }
     }
     $webserver = "webserver.yml"
     $files +=" -f $path$webserver"
+    $tobeInstalled +="`n Web-Server"
+    Write-Host " Container to be Installed:"
+    Write-Host $tobeInstalled
+    Get-EndTask; Write-Host " --> List Analyzed and Completed!!!"
     $files = $files.Trim()
     $command = "docker-compose -p $stackName $files up -d --build"
+    $postInstall = $false
+    if (-not ($command -like "*nginx*")) {
+        $postInstall = $true
+    }
+    Get-AddTask; Write-Host "Starting the downloading of image and construction of containers...`n`n"
     Invoke-Expression -Command $command
     Get-EndTask; Write-Host " --> Installation completed successfully!!!"
+    if($postInstall){
+        Get-AddTask; Write-Host "Starting the Post-Installation...`n`n"
+        $sslLocalPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$($Urls.main_url)"
+        $command2 = "docker cp $sslLocalPath Proxy-Server:/etc/nginx/certs"
+        Invoke-Expression -Command $command2
+        Get-EndTask; Write-Host " --> Post-Installation completed successfully!!!"
+    }
     Get-Pause
 }
 
@@ -561,28 +591,21 @@ function Set-Shortcut {
 function Get-SuccessfulInstall {
     param (
         [string]$protocol,
-        [string]$main_url,
-        [string]$pma_url,
-        [string]$cron_url,
+        [PSCustomObject]$urls,
         [PSCustomObject]$dbConfig,
         [string]$email,
         [string]$dockroot
     )
     [Console]::Clear()
     Get-TittleScreen
-    $urls = New-Object PSObject -Property @{
-        main = $main_url
-        pma = $pma_url
-        cron = $cron_url
-    }
     Set-Shortcut -urls $urls -protocol $protocol
     Write-Host "`n Docker LAMP Stack Installation Summary" -ForegroundColor "Red"
     Write-Host "`n Main Web Server URL: " -NoNewline
-    Write-Host $protocol$main_url -ForegroundColor "Yellow"
+    Write-Host $protocol$($Urls.main_url) -ForegroundColor "Yellow"
     Write-Host " phpMyAdmin URL:      " -NoNewline
-    Write-Host $protocol$pma_url -ForegroundColor "Yellow"
+    Write-Host $protocol$($Urls.pma_url) -ForegroundColor "Yellow"
     Write-Host " phpMyAdmin URL:      " -NoNewline
-    Write-Host $protocol$cron_url -ForegroundColor "Yellow"
+    Write-Host $protocol$($Urls.cron_url) -ForegroundColor "Yellow"
     Write-Host " DB user:             " -NoNewline
     $user = $dbConfig.Username
     Write-Host $user -ForegroundColor "Yellow"
@@ -605,6 +628,29 @@ function Get-SuccessfulInstall {
     Get-AddCyanLine
 }
 
+function Get-Welcome {
+    [Console]::Clear()
+    Get-TittleScreen
+    Write-Host "`n You must Read and Accept this before Continuing."  -ForegroundColor "Red"
+    Get-AddCyanLine
+    Write-Host "`n Welcome to Docker-Stack-Lamp, the purpose of this application"
+    Write-Host " is to guide you in the installation of the Docker-based"
+    Write-Host " Stack Lamp, keep the following in mind:"
+    Write-Host "`n   1. Let's configure some necessary parameters." -ForegroundColor "Yellow"
+    Write-Host "   2. We will modify your System Host file." -ForegroundColor "Yellow"
+    Write-Host "   3. Local Urls." -ForegroundColor "Yellow"
+    Write-Host "   4. We will create a Proxy, MySql and phpMyAdmin container." -ForegroundColor "Yellow"
+    Write-Host "   5. You could also run this process several times to create " -ForegroundColor "Yellow"
+    Write-Host "      new containers to host web projects based on a LAMP stack." -ForegroundColor "Yellow"
+    Write-Host "`n For more information you can visit the site on github:"
+    Write-Host " https://github.com/arcanisgk/Docker-Stack-Lamp"
+    Get-AddCyanLine
+    Write-Host "`n If you do not agree with what is indicated here,"
+    Write-Host " you should close this terminal."  -ForegroundColor "Red"
+    Get-AddCyanLine
+    Get-Pause
+}
+
 #=========================================#
 # Environment Preparation
 
@@ -613,6 +659,16 @@ function Get-SuccessfulInstall {
 $Host.UI.RawUI.WindowTitle = "|| Environment Installer and Setup ||"
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location -Path $scriptDirectory
+$Urls = New-Object PSObject -Property @{
+    "main_url" = ""
+    "stack_url" = "lh-stack.dock"
+    "pma_url" = "pma.lh-stack.dock"
+    "cron_url" = ""
+}
+$StaticContainers = New-Object PSObject -Property @{
+    "MySql-Server" = "db"
+    "Proxy-Server" = ""
+}
 
 #=========================================#
 # Execution
@@ -620,28 +676,31 @@ Set-Location -Path $scriptDirectory
 Get-Administrator
 $summaryPath = Join-Path -Path $scriptDirectory -ChildPath "/summary.txt"
 Start-Transcript -Path $summaryPath  >> run.log 2>&1
+Get-Welcome
 $security = Get-Security
 Install-Prerequisite -security $security
 if (Get-DefaultOrCustom -eq $true) {
-    $main_url = "lh-stack.dock"
-    $pma_url = "pma.lh-stack.dock"
-    $cron_url = "cron.lh-stack.dock"
+    $Urls.main_url = $Urls.stack_url
+    $Urls.cron_url = "cron.$($Urls.main_url)"
 } else {
     $confirm = $true
     while ($confirm) {
         $main_url = Get-Url
-        $main_url = "$main_url.dock"
-        $pma_url = "pma.$main_url"
-        $cron_url = "cron.$main_url"
-        $confirm = Get-UrlConfirm -main_url $main_url -pma_url $pma_url -cron_url $cron_url
+        $Urls.main_url = "$main_url.dock"
+        $Urls.cron_url = "cron.$main_url.dock"
+        $confirm = Get-UrlConfirm -Urls $Urls
     }
 }
-if($security){
+
+if($security) {
     $protocol="https://"
-    Get-SslCerts -main_url $main_url
+    $StaticContainers."Proxy-Server" = "nginx.ssl"
+    Get-SslCerts -Urls $Urls
 } else {
+    $StaticContainers."Proxy-Server" = "nginx"
     $protocol="http://"
 }
+
 $dockroot = Get-DirectoryRoot
 $dockroot = $dockroot.Trim()
 $phpVersion = Get-PhpVersion
@@ -651,8 +710,9 @@ $email = Get-DevEmail
 [System.Console]::CursorVisible = $false
 Get-TittleScreen
 Write-Host "`n Starting the Installation of the Docker Development Environment" -ForegroundColor "Red"
-Set-EnvironmentVariables -main_url $main_url -pma_url $pma_url -cron_url $cron_url -dbConfig $dbConfig -email $email -dockroot $dockroot -phpVersion $phpVersion
+Set-EnvironmentVariables -Urls $Urls -dbConfig $dbConfig -email $email -dockroot $dockroot -phpVersion $phpVersion
 $file = Join-Path -Path $scriptDirectory -ChildPath "/docker/.env"
+
 if (Test-Path $file) {
     Get-DockerComposeYml -security $security
     $file1 = Join-Path -Path $scriptDirectory -ChildPath "/docker/db.yml"
@@ -663,9 +723,9 @@ if (Test-Path $file) {
         Get-VhostFile
         $file = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/vhost/vhost.conf"
         if (Test-Path $file) {
-            Set-NetWorkEnvironment -main_url $main_url -pma_url $pma_url -cron_url $cron_url
-            Get-DockerInstall -security $security
-            Get-SuccessfulInstall -protocol $protocol -main_url $main_url -pma_url $pma_url -cron_url $cron_url -dbConfig $dbConfig -email $email -dockroot $dockroot
+            Set-NetWorkEnvironment -Urls $Urls
+            Get-DockerInstall -security $security -Urls $Urls -StaticContainers $StaticContainers
+            Get-SuccessfulInstall -protocol $protocol -Urls $Urls -dbConfig $dbConfig -email $email -dockroot $dockroot
         }else{
             Get-ErrorOutput -code "0001" -smg "Could not find virtual host configuration file."
         }
