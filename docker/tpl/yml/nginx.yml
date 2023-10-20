@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+
+  reverse-proxy:
+    env_file:
+      - .env
+    container_name: Proxy-Server
+    image: nginxproxy/nginx-proxy
+    restart: always
+    ports:
+      - ${LH_HOST_MACHINE_UNSECURE_HOST_PORT}:80
+    depends_on:
+      - webserver
+      - phpmyadmin
+    environment:
+      - HTTPS_METHOD=noredirect
+      - TRUST_DOWNSTREAM_PROXY=true
+      - ENABLE_WEBSOCKETS=true
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - lamp-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    privileged: true
+    tty: true
+
+networks:
+  lamp-network:
+    external: true    

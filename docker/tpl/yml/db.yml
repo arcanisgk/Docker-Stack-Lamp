@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+
+  database:
+    env_file:
+      - .env
+    build:
+      context: ./bin/${LH_DATABASE}
+    container_name: MySql-Server
+    restart: always
+    networks:
+      - lamp-network
+    ports:
+      - "127.0.0.1:${LH_HOST_MACHINE_MYSQL_PORT}:${LH_HOST_MACHINE_MYSQL_PORT}"
+    volumes:
+      - ${LH_MYSQL_DATA_DIR}:/var/lib/mysql
+      - ${LH_MYSQL_LOG_DIR}:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${LH_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${LH_MYSQL_DATABASE}
+      MYSQL_USER: ${LH_MYSQL_USER}
+      MYSQL_PASSWORD: ${LH_MYSQL_PASSWORD}
+    labels:
+      - "lh-stack.database.description=Database Server"
+      - "lh-stack.database.role=database"
+      
+  phpmyadmin:
+    env_file:
+      - .env
+    container_name: phpMyAdmin-Server
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    expose:
+      - 80
+    depends_on:
+      - database
+    environment:
+      VIRTUAL_HOST: ${LH_PHPMYADMIN_DOMAIN}
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${LH_MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${LH_MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${LH_MYSQL_USER}
+      MYSQL_PASSWORD: ${LH_MYSQL_PASSWORD}
+      UPLOAD_LIMIT: ${LH_UPLOAD_LIMIT}
+      MEMORY_LIMIT: ${LH_MEMORY_LIMIT}
+    volumes:
+      - /sessions
+      - ${LH_PHP_INI}:/usr/local/etc/php/conf.d/php-phpmyadmin.ini
+    networks:
+      - lamp-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - "lh-stack.phpmyadmin.description=phpMyAdmin"
+      - "lh-stack.phpmyadmin.role=phpmyadmin"
+
+networks:
+  lamp-network:
+    external: true

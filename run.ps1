@@ -213,11 +213,11 @@ function Get-DirectoryRoot {
         Set-Destination -dockroot $dockroot
         Get-Pause
         return "/$dockroot"
-    } elseif($choice -eq "1") {
+    } else {
         $sourceFile = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/public/index.php"
         $destinationPath = Join-Path -Path $scriptDirectory -ChildPath "/project"
         if (-not (Test-Path -Path $destinationPath -PathType Container)) {
-            New-Item -Path $destinationPath -ItemType Directory
+            $null = New-Item -Path $destinationPath -ItemType Directory | Out-Null
         }
         Copy-Item -Path $sourceFile -Destination $destinationPath -Recurse
         Get-Pause
@@ -323,7 +323,7 @@ function Set-EnvironmentVariables {
     [System.Environment]::SetEnvironmentVariable("LH_PHP_VERSION", $phpVersion, [System.EnvironmentVariableTarget]::Process)
     Get-EndTask; Write-Host " --> Project Name: " -ForegroundColor "Cyan" -NoNewline
     Write-Host "$project_name_Uppercase ($project_name)" -ForegroundColor "Yellow"
-    $envFilePath = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/tpl.dev.env"
+    $envFilePath = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/other/tpl.dev.env"
     Get-AddTask; Write-Host "Found the .env template file in the following location:"
     Write-Host " --> Location: " -ForegroundColor "Cyan" -NoNewline
     Write-Host "$((Get-Item -Path $envFilePath).FullName)" -ForegroundColor "Yellow"
@@ -366,56 +366,53 @@ function Set-EnvironmentVariables {
     Get-EndTask; Write-Host " --> File has been expanded environment variables."
 }
 
-function Get-DockerComposeYml{
-    param (
-        [boolean]$security
-    )
-    if($security){
-        $file = "/docker/tpl/tpl.dev.secure.yml"
-    } else {
-        $file = "/docker/tpl/tpl.dev.yml"
-    }
-    $ymlFilePath = Join-Path -Path $scriptDirectory -ChildPath $file
-    Get-AddTask; Write-Host "Found the YML template file in the following location:"
-    Write-Host " --> " -NoNewline
-    Write-Host "$((Get-Item -Path $ymlFilePath).FullName)" -ForegroundColor "Yellow"
-    Get-AddTask; Write-Host "Processing template file to get the docker set up..."
-    $ymlFileContent = Get-Content $ymlFilePath -Raw
-    $ymlFileNewContent = ""
-    $ymlFileContentLines = [Regex]::Split($ymlFileContent, "\r\n|\n")
-    Write-Host " Progress: " -NoNewline
-    $character = [char]::ConvertFromUtf32(0x2588)
-    $expressionRegular = '\$\{([^}]*)\}'
-    $i = 1
-    $ymlFileContentLines| ForEach-Object {
-        $line = $_
-        $coincidencias = [System.Text.RegularExpressions.Regex]::Matches($line, $expressionRegular)
-        if($coincidencias.Count -gt 0){
-            Write-Host "$character" -ForegroundColor "DarkCyan" -NoNewline
-        }
-        foreach ($coincidencia in $coincidencias) {
-            $textoEncontrado = $coincidencia.Groups[1].Value
-            if ([System.Environment]::GetEnvironmentVariable($textoEncontrado)) {
-                $newValue = [System.Environment]::GetEnvironmentVariable($textoEncontrado)
-                $line = $line.Replace($coincidencia, $newValue)
+function Get-DockerComposeYml {
+    $directorio = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/yml"
+    $archivos = Get-ChildItem -Path $directorio -Filter *.yml
+    foreach ($archivo in $archivos) {
+        $file = $archivo.Name
+        $ymlFilePath = $archivo.FullName
+        Get-AddTask; Write-Host "Found the YML template file in the following location:"
+        Write-Host " --> " -NoNewline
+        Write-Host "$((Get-Item -Path $ymlFilePath).FullName)" -ForegroundColor "Yellow"
+        Get-AddTask; Write-Host "Processing template file to get the docker set up..."
+        $ymlFileContent = Get-Content $ymlFilePath -Raw
+        $ymlFileNewContent = ""
+        $ymlFileContentLines = [Regex]::Split($ymlFileContent, "\r\n|\n")
+        Write-Host " Progress: " -NoNewline
+        $character = [char]::ConvertFromUtf32(0x2588)
+        $expressionRegular = '\$\{([^}]*)\}'
+        $i = 1
+        $ymlFileContentLines| ForEach-Object {
+            $line = $_
+            $coincidencias = [System.Text.RegularExpressions.Regex]::Matches($line, $expressionRegular)
+            if($coincidencias.Count -gt 0){
+                Write-Host "$character" -ForegroundColor "DarkCyan" -NoNewline
             }
+            foreach ($coincidencia in $coincidencias) {
+                $textoEncontrado = $coincidencia.Groups[1].Value
+                if ([System.Environment]::GetEnvironmentVariable($textoEncontrado)) {
+                    $newValue = [System.Environment]::GetEnvironmentVariable($textoEncontrado)
+                    $line = $line.Replace($coincidencia, $newValue)
+                }
+            }
+            $ymlFileNewContent += $line+"`n"
+            $i++
+        } -End {
+            Write-Host " 100%"
         }
-        $ymlFileNewContent += $line+"`n"
-        $i++
-    } -End {
-        Write-Host " 100%"
+        $outputFilePath = Join-Path -Path $scriptDirectory -ChildPath "/docker/$file"
+        $ymlFileNewContent = $ymlFileNewContent -replace "(\r?\n)+\z", ""
+        $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+        [System.IO.File]::WriteAllLines($outputFilePath, $ymlFileNewContent, $Utf8NoBomEncoding)
+        Write-Host " --> File Create: " -NoNewline
+        Write-Host "$file" -ForegroundColor "Red"
+        Get-EndTask; Write-Host " --> File has been expanded environment variables."
     }
-    $outputFilePath = Join-Path -Path $scriptDirectory -ChildPath "/docker/docker-compose.yml"
-    $ymlFileNewContent = $ymlFileNewContent -replace "(\r?\n)+\z", ""
-    $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-    [System.IO.File]::WriteAllLines($outputFilePath, $ymlFileNewContent, $Utf8NoBomEncoding)
-    Write-Host " --> File Create: " -NoNewline
-    Write-Host "docker-compose.yml" -ForegroundColor "Red"
-    Get-EndTask; Write-Host " --> File has been expanded environment variables."
 }
 
 function Get-VhostFile {
-    $file = "/docker/tpl/tpl.vhost.conf"
+    $file = "/docker/tpl/other/tpl.vhost.conf"
     $vhostFilePath = Join-Path -Path $scriptDirectory -ChildPath $file
     Get-AddTask; Write-Host "Found the VHost template file in the following location:"
     Write-Host " --> " -NoNewline
@@ -454,20 +451,32 @@ function Get-VhostFile {
 }
 
 function Set-NetWorkEnvironment {
+    param (
+        [string]$main_url,
+        [string]$pma_url,
+        [string]$cron_url
+    )
     Get-AddTask; Write-Host "Applying network settings for Local URLs..."
-    $lh_url_host = [System.Environment]::GetEnvironmentVariable("LH_URL_HOST")
-    $resolved_url_host = $lh_url_host -replace '"', ''
     $hosts_file = "${env:SystemRoot}\System32\drivers\etc\hosts"
-    $host_entry = "127.0.0.1 $resolved_url_host"
     $current_content = Get-Content $hosts_file -Raw
     $pattern = "(?ms)(# Developer Area Docker.*?# End of Area)"
     if ($current_content -match $pattern) {
-        $current_content = $current_content -replace $pattern, ("# Developer Area Docker`n$host_entry`n# End of Area")
+        $host_entry = $matches[0] -split "`r`n" | Select-Object -Skip 1 | Select-Object -First 1
+        $old_url = $host_entry -split " "
+        $newUrls = $main_url,$pma_url,$cron_url
+        $newEntry = ""
+        foreach ($newUrl in $newUrls) {
+            if ($old_url -notcontains $newUrl) {
+                $newEntry += " $newUrl"
+            }
+        }
+        $current_content = $current_content -replace $pattern, ("# Developer Area Docker`n127.0.0.1 $host_entry $newEntry`n# End of Area")
         $current_content = $current_content -replace "(\r?\n)+\z", ""
         Set-Content -Path $hosts_file -Value $current_content
         Get-EndTask; Write-Host " --> Updated operating system hosts file."
     } else {
-        $current_content += "`n`n# Developer Area Docker`n$host_entry`n# End of Area"
+        $host_entry = "127.0.0.1 $main_url $pma_url $cron_url"
+        $current_content += "`n# Developer Area Docker`n$host_entry`n# End of Area"
         $current_content = $current_content -replace "(\r?\n)+\z", ""
         Set-Content -Path $hosts_file -Value $current_content
         Get-EndTask; Write-Host " --> The Host section was added at the end of the hosts file."
@@ -475,7 +484,18 @@ function Set-NetWorkEnvironment {
     Get-Pause
 }
 
+function Set-DockerNetwork{
+    $networkName = "lamp-network"
+    $redExistente = docker network ls --filter "name=$networkName" --format '{{.Name}}'
+    if (-not ($redExistente -contains $networkName)) {
+        docker network create --driver bridge $networkName
+    }
+}
+
 function Get-DockerInstall {
+    param (
+        [boolean]$security
+    )
     [Console]::Clear()
     Get-TittleScreen
     Write-Host "`n Automatic Docker Installation Interface" -ForegroundColor "Red"
@@ -488,10 +508,32 @@ function Get-DockerInstall {
     }
     Get-AddTask; Write-Host "Starting the downloading of image and construction of containers...`n`n"
     $env:DOCKER_HOST = "tcp://localhost:2375"
-    $path = Join-Path -Path $scriptDirectory -ChildPath "/docker/docker-compose.yml"
+    $path = Join-Path -Path $scriptDirectory -ChildPath "/docker/"
     $stackName = [System.Environment]::GetEnvironmentVariable('LH_SYSTEM_NAME')
-    docker network create --driver bridge lamp-network
-    docker-compose -p $stackName -f $path up -d --build
+    Set-DockerNetwork
+    $containerStructure = New-Object PSObject -Property @{
+        "MySql-Server" = "db"
+        "Proxy-Server" = ""
+    }
+    if ($security) {
+        $containerStructure."Proxy-Server" = "nginx.ssl"
+    } else {
+        $containerStructure."Proxy-Server" = "nginx"
+    }
+    $files = ""
+    foreach ($container in $containerStructure.PSObject.Properties) {
+        $containerName = $container.Name
+        $file = $container.Value
+        $containerExist = docker ps --filter "name=$containerName" --format '{{.Names}}'
+        if (-not ($containerExist -contains $containerName)) {
+            $files +=" -f $path$file.yml"
+        }
+    }
+    $webserver = "webserver.yml"
+    $files +=" -f $path$webserver"
+    $files = $files.Trim()
+    $command = "docker-compose -p $stackName $files up -d --build"
+    Invoke-Expression -Command $command
     Get-EndTask; Write-Host " --> Installation completed successfully!!!"
     Get-Pause
 }
@@ -613,13 +655,16 @@ Set-EnvironmentVariables -main_url $main_url -pma_url $pma_url -cron_url $cron_u
 $file = Join-Path -Path $scriptDirectory -ChildPath "/docker/.env"
 if (Test-Path $file) {
     Get-DockerComposeYml -security $security
-    $file = Join-Path -Path $scriptDirectory -ChildPath "/docker/docker-compose.yml"
-    if (Test-Path $file) {
+    $file1 = Join-Path -Path $scriptDirectory -ChildPath "/docker/db.yml"
+    $file2 = Join-Path -Path $scriptDirectory -ChildPath "/docker/nginx.yml"
+    $file3 = Join-Path -Path $scriptDirectory -ChildPath "/docker/nginx.ssl.yml"
+    $file4 = Join-Path -Path $scriptDirectory -ChildPath "/docker/webserver.yml"
+    if ((Test-Path $file1) -and (Test-Path $file2) -and (Test-Path $file3) -and (Test-Path $file4)) {
         Get-VhostFile
         $file = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/vhost/vhost.conf"
         if (Test-Path $file) {
-            Set-NetWorkEnvironment
-            Get-DockerInstall
+            Set-NetWorkEnvironment -main_url $main_url -pma_url $pma_url -cron_url $cron_url
+            Get-DockerInstall -security $security
             Get-SuccessfulInstall -protocol $protocol -main_url $main_url -pma_url $pma_url -cron_url $cron_url -dbConfig $dbConfig -email $email -dockroot $dockroot
         }else{
             Get-ErrorOutput -code "0001" -smg "Could not find virtual host configuration file."

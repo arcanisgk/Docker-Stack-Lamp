@@ -13,3 +13,7 @@ summary.txt
 !/docker/data/.gitkeep
 !/docker/config/ssl/.gitkeep
 !/docker/config/vhost/.gitkeep
+docker/db.yml
+docker/nginx.ssl.yml
+docker/nginx.yml
+docker/webserver.yml

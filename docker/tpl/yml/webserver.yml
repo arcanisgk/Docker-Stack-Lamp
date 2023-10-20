@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+
+  webserver:
+    env_file:
+      - .env
+    container_name: Web-Server-${LH_PROJECT_NAME}
+    build:
+      context: ./bin/${LH_PHP_ENVIRONMENT}
+      dockerfile: Dockerfile.secure
+      args:
+        - LH_PHP_VERSION=${LH_PHP_VERSION}
+    restart: always
+    expose:
+      - 80
+    networks:
+      - lamp-network
+    volumes:
+      - ${LH_PROJECT_ROOT}:/var/www/html:rw
+      - ${LH_PROJECT_ROOT}${LH_DOCUMENT_ROOT}:/var/www/html${LH_DOCUMENT_ROOT}:rw
+      - ${LH_VHOST_DIR}:/etc/apache2/sites-enabled
+      - ${LH_PHP_INI}:/usr/local/etc/php/php.ini
+      - ${LH_CRON_TASK}:/etc/cron-task
+      - ${LH_DATA_CRON}:/data/cron
+      - ${LH_LOG_DIR}:/var/log/apache2
+      - ${LH_LOG_CRON}:/var/log/cron
+    environment:
+      VIRTUAL_HOST: ${LH_WEB_SERVER_DOMAIN},${LH_CRONTAB_DOMAIN}
+      LH_WEB_MASTER: ${LH_WEB_MASTER}
+      LH_APACHE_DOCUMENT_ROOT: ${LH_APACHE_DOCUMENT_ROOT}
+      LH_DOCUMENT_ROOT: ${LH_DOCUMENT_ROOT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - "lh-stack.webserver.description=Web Server"
+      - "lh-stack.webserver.role=webserver"
+    privileged: true
+    tty: true
+
+networks:
+  lamp-network:
+    external: true
