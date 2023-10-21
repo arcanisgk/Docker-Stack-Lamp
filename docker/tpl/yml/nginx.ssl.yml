@@ -20,7 +20,7 @@ services:
       - ENABLE_WEBSOCKETS=true
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./config/ssl/${LH_WEB_SERVER_DOMAIN}:/etc/nginx/certs
+      - ./config/ssl:/etc/nginx/certs
     networks:
       - lamp-network
     extra_hosts:

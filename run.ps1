@@ -177,16 +177,16 @@ function Get-SslCerts {
     Get-AddTask; Write-Host "Generating Certificates with mkcert..."
     if($Urls.main_url -eq $Urls.stack_url) {
         $site = $Urls.main_url
-        $certPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$site/"
+        $certPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
         Set-DirectoryForSSL -certPath $certPath
         mkcert -cert-file "$certPath$site.crt" -key-file "$certPath$site.key" "$site" "*.$site" >> run.log 2>&1
     } else {
         $site1 = $Urls.main_url
-        $certPath1 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$site1/"
+        $certPath1 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
         Set-DirectoryForSSL -certPath $certPath1
         mkcert -cert-file "$certPath1$site1.crt" -key-file "$certPath1$site1.key" "$site1" "*.$site1" >> run.log 2>&1
         $site2 = $Urls.stack_url
-        $certPath2 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/$site2/"
+        $certPath2 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
         if (-not (Test-Path -Path $certPath2 -PathType Container)) {
             Set-DirectoryForSSL -certPath $certPath2
             mkcert -cert-file "$certPath2$site2.crt" -key-file "$certPath2$site2.key" "$site2" "*.$site2" >> run.log 2>&1
@@ -560,7 +560,7 @@ function Get-DockerInstall {
     Get-EndTask; Write-Host " --> Installation completed successfully!!!"
     if($postInstall){
         Get-AddTask; Write-Host "Starting the Post-Installation...`n`n"
-        $sslLocalPath = Join-Path -Path $scriptDirectory -ChildPath "\docker\config\ssl\$($Urls.main_url)\."
+        $sslLocalPath = Join-Path -Path $scriptDirectory -ChildPath "\docker\config\ssl\."
         $command2 = "docker cp $sslLocalPath Proxy-Server:/etc/nginx/certs/"
         Invoke-Expression -Command $command2
         Invoke-Expression -Command "docker restart Proxy-Server"
