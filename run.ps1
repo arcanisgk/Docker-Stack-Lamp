@@ -484,11 +484,14 @@ function Set-NetWorkEnvironment {
         $lines += "127.0.0.1 $($Urls.cron_url)"
         $lines += $end_marker
     }
+    # Eliminar líneas vacías y mantener solo una
+    $lines = $lines | Where-Object { $_ -match '\S' }
     $updated_content = $lines -join "`r`n"
     Set-Content -Path $hosts_file -Value $updated_content
     Get-EndTask
     Write-Host " --> Updated operating system hosts file."
     Get-Pause
+    exit
 }
 
 function Set-DockerNetwork{
@@ -564,18 +567,19 @@ function Set-Shortcut {
     )
     $desktopPath = [System.Environment]::GetFolderPath('Desktop')
     foreach ($urlTemp in $urls.PSObject.Properties) {
-        $site = $urlTemp.Name
-        $url = $urlTemp.Value
-        $websiteName = [System.IO.Path]::GetFileNameWithoutExtension($url)
-        $shell = New-Object -ComObject WScript.Shell
-        $shortcut = $shell.CreateShortcut("$desktopPath\$websiteName.lnk")
-        $shortcut.TargetPath = "$protocol$url"
-        $iconPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/icon/$site.ico"
-        $shortcut.IconLocation = $iconPath
-        $shortcut.Save()
+        if ($urlTemp.Name -ne "stack_url") {
+            $site = $urlTemp.Name
+            $url = $urlTemp.Value
+            $websiteName = [System.IO.Path]::GetFileNameWithoutExtension($url)
+            $shell = New-Object -ComObject WScript.Shell
+            $shortcut = $shell.CreateShortcut("$desktopPath\$websiteName.lnk")
+            $shortcut.TargetPath = "$protocol$url"
+            $iconPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/tpl/icon/$site.ico"
+            $shortcut.IconLocation = $iconPath
+            $shortcut.Save()
+        }
     }
 }
-
 
 function Get-SuccessfulInstall {
     param (
