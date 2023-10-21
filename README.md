@@ -33,7 +33,9 @@ Docker-Stack-Lamp       # Directory that where main you chose
 │   │   └───xdebug
 │   └───tpl             # Template directory for docker.
 │       ├───icon
-│       └───public
+│       ├───other
+│       ├───public
+│       └───yml
 └───project             # Development directory where your web project will be or should be added
 ```
 
@@ -89,7 +91,11 @@ https://youtu.be/j44xViK3Ass
 # End of section
 
 # Developer Area Docker
-127.0.0.1 lh-stack.dock pma.lh-stack.dock cron.lh-stack.dock
+127.0.0.1 avi4.dock
+127.0.0.1 cron.avi4.dock
+127.0.0.1 lh-stack.dock
+127.0.0.1 pma.lh-stack.dock
+127.0.0.1 cron.lh-stack.dock
 # End of Area
 ```
 
@@ -109,6 +115,13 @@ phpMyAdmin environment:
 crontab-ui environment:
 
 ![crontab-ui view](https://i.imgur.com/7I40e1I.png)
+
+### Scalability:
+
+Multi container web server with different php running and individual cronjob setup
+
+![multiple container](https://i.imgur.com/CCqDuen.png)
+
 
 ### Coming soon 2024:
 
