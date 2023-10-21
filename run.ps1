@@ -158,15 +158,6 @@ function Get-UrlConfirm {
     }
 }
 
-function Set-DirectoryForSSL {
-    param(
-        [string]$certPath
-    )
-    if (-not (Test-Path -Path $certPath -PathType Container)) {
-        $null = New-Item -Path $certPath -ItemType Directory -Force | Out-Null
-    }
-}
-
 function Get-SslCerts {
     param (
         [PSCustomObject]$Urls
@@ -178,17 +169,14 @@ function Get-SslCerts {
     if($Urls.main_url -eq $Urls.stack_url) {
         $site = $Urls.main_url
         $certPath = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
-        Set-DirectoryForSSL -certPath $certPath
         mkcert -cert-file "$certPath$site.crt" -key-file "$certPath$site.key" "$site" "*.$site" >> run.log 2>&1
     } else {
         $site1 = $Urls.main_url
         $certPath1 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
-        Set-DirectoryForSSL -certPath $certPath1
         mkcert -cert-file "$certPath1$site1.crt" -key-file "$certPath1$site1.key" "$site1" "*.$site1" >> run.log 2>&1
         $site2 = $Urls.stack_url
         $certPath2 = Join-Path -Path $scriptDirectory -ChildPath "/docker/config/ssl/"
-        if (-not (Test-Path -Path $certPath2 -PathType Container)) {
-            Set-DirectoryForSSL -certPath $certPath2
+        if (-not (Test-Path -Path "$certPath2$site2.crt")) {
             mkcert -cert-file "$certPath2$site2.crt" -key-file "$certPath2$site2.key" "$site2" "*.$site2" >> run.log 2>&1
         }
     }
