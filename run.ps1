@@ -491,7 +491,6 @@ function Set-NetWorkEnvironment {
     Get-EndTask
     Write-Host " --> Updated operating system hosts file."
     Get-Pause
-    exit
 }
 
 function Set-DockerNetwork{
